@@ -1,0 +1,37 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>Hotel Hollowmere</title>
+<style>
+  html,body{margin:0;height:100%;background:#000;overflow:hidden;font-family:Georgia,serif;color:#ddd}
+  canvas{display:block}
+  #hud{position:fixed;inset:0;pointer-events:none}
+  #cross{position:absolute;left:50%;top:50%;width:4px;height:4px;margin:-2px;background:#fff8;border-radius:50%}
+  #prompt{position:absolute;left:50%;top:58%;transform:translateX(-50%);font-size:20px;text-shadow:0 0 6px #000}
+  #msg{position:absolute;left:50%;bottom:12%;transform:translateX(-50%);font-size:22px;text-align:center;max-width:70%;text-shadow:0 0 8px #000;font-style:italic}
+  #info{position:absolute;left:16px;top:12px;font-size:15px;line-height:1.5;text-shadow:0 0 4px #000;opacity:.85}
+  #vig{position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 45%,#000c 100%)}
+  #blood{position:absolute;inset:0;background:#a00;opacity:0}
+  #overlay{position:fixed;inset:0;background:#000d;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;cursor:pointer}
+  #overlay h1{font-size:54px;letter-spacing:6px;color:#c33;margin:0 0 10px}
+  #overlay p{max-width:560px;line-height:1.5}
+  #pad{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);background:#111;border:2px solid #744;padding:24px;display:none;text-align:center}
+  #pad input{font-size:32px;width:140px;text-align:center;background:#000;color:#e55;border:1px solid #744;letter-spacing:8px}
+  #pad button{font-size:18px;margin:8px 4px 0;padding:6px 14px}
+  #eyeSay{position:absolute;left:50%;top:14%;transform:translateX(-50%);font-size:22px;color:#9fffb8;background:#000a;border:2px solid #3c6;border-radius:14px;padding:8px 16px;max-width:60%;text-align:center;opacity:0;transition:opacity .4s}
+  #freeze{position:absolute;left:50%;top:30%;transform:translateX(-50%);font-size:44px;font-weight:bold;color:#7df;text-shadow:0 0 14px #09f;opacity:0;transition:opacity .2s}
+  #mini{position:absolute;right:12px;bottom:12px;border:2px solid #8658;border-radius:4px}
+  #mini.big{right:auto;bottom:auto;top:50%;left:50%;transform:translate(-50%,-50%)}
+  #zap{position:absolute;inset:0;background:#5cf;opacity:0}
+  #flash{position:absolute;inset:0;background:#fff;opacity:0}
+  #blood{transition:opacity 1s}
+</style>
+</head>
+<body>
+<div id="hud"><div id="vig"></div><div id="blood"></div><div id="flash"></div><div id="zap"></div><div id="cross"></div><div id="prompt"></div><div id="msg"></div><div id="eyeSay"></div><div id="freeze">❄ FREEZE! Don't move! ❄</div><div id="info"></div><canvas id="mini"></canvas></div>
+<div id="pad"><div id="padTitle">Enter code</div><input id="padIn" maxlength="4" autocomplete="off" /><br><button id="padOk">OK</button><button id="padCancel">Cancel</button></div>
+<div id="overlay"><h1 id="ovTitle">HOTEL HOLLOWMERE</h1><p id="ovText">Halloween night. You were taken by something that is not human, and you wake up in a cell in the cellar of an old hotel. Find a way out before midnight.<br><br><b>WASD</b> move · <b>Shift</b> run (loud!) · <b>Mouse</b> look · <b>E</b> interact · <b>F</b> flashlight · <b>M</b> big map · <b>H</b> ask the Rolling Eye · <b>Q</b> or click: light flash (stuns the Concierge!)<br>Listen for the Concierge's bell! Sparky the electric ghost is drawn to light switches and glowing flashlights - if he comes close, freeze!Hide in wardrobes when the Concierge hunts you.<br><br><i>Click to begin</i></p></div>
+<script type="module" src="/src/main.ts"></script>
+</body>
+</html>

@@ -1,0 +1,121 @@
+// All sound is synthesized with Web Audio, so no audio files are needed.
+export class Sound {
+  ctx!: AudioContext;
+  master!: GainNode;
+  noise!: AudioBuffer;
+  private droneGain!: GainNode;
+  private beatT = 0;
+
+  start() {
+    this.ctx = new AudioContext();
+    this.master = this.ctx.createGain();
+    this.master.gain.value = 0.8;
+    this.master.connect(this.ctx.destination);
+    const len = this.ctx.sampleRate * 2;
+    this.noise = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
+    const d = this.noise.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+
+    this.droneGain = this.ctx.createGain();
+    this.droneGain.gain.value = 0.12;
+    this.droneGain.connect(this.master);
+    for (const f of [41, 43.2, 61.7]) {
+      const o = this.ctx.createOscillator();
+      o.type = "sawtooth";
+      o.frequency.value = f;
+      const lp = this.ctx.createBiquadFilter();
+      lp.type = "lowpass";
+      lp.frequency.value = 160;
+      o.connect(lp).connect(this.droneGain);
+      o.start();
+    }
+    const wind = this.ctx.createBufferSource();
+    wind.buffer = this.noise;
+    wind.loop = true;
+    const bp = this.ctx.createBiquadFilter();
+    bp.type = "bandpass";
+    bp.frequency.value = 400;
+    bp.Q.value = 0.8;
+    const wg = this.ctx.createGain();
+    wg.gain.value = 0.05;
+    const lfo = this.ctx.createOscillator();
+    lfo.frequency.value = 0.12;
+    const lg = this.ctx.createGain();
+    lg.gain.value = 0.04;
+    lfo.connect(lg).connect(wg.gain);
+    lfo.start();
+    wind.connect(bp).connect(wg).connect(this.master);
+    wind.start();
+  }
+
+  private burst(freq: number, q: number, dur: number, vol: number, type: BiquadFilterType = "bandpass") {
+    const t = this.ctx.currentTime;
+    const s = this.ctx.createBufferSource();
+    s.buffer = this.noise;
+    const f = this.ctx.createBiquadFilter();
+    f.type = type;
+    f.frequency.value = freq;
+    f.Q.value = q;
+    const g = this.ctx.createGain();
+    g.gain.setValueAtTime(vol, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    s.connect(f).connect(g).connect(this.master);
+    s.start(t, Math.random());
+    s.stop(t + dur);
+  }
+
+  private tone(freq: number, dur: number, vol: number, type: OscillatorType = "sine", slideTo?: number) {
+    const t = this.ctx.currentTime;
+    const o = this.ctx.createOscillator();
+    o.type = type;
+    o.frequency.setValueAtTime(freq, t);
+    if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, t + dur);
+    const g = this.ctx.createGain();
+    g.gain.setValueAtTime(vol, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    o.connect(g).connect(this.master);
+    o.start(t);
+    o.stop(t + dur);
+  }
+
+  bell(vol: number) {
+    if (vol <= 0.02) return;
+    const t = this.ctx.currentTime;
+    for (const [f, v] of [[880, 1], [1318, 0.6], [2217, 0.35], [3520, 0.2]]) {
+      const o = this.ctx.createOscillator();
+      o.type = "sine";
+      o.frequency.value = f * (1 + Math.random() * 0.01);
+      const g = this.ctx.createGain();
+      g.gain.setValueAtTime(vol * v * 0.3, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 1.2);
+      o.connect(g).connect(this.master);
+      o.start(t);
+      o.stop(t + 1.2);
+    }
+  }
+  flash() { this.tone(2400, 0.5, 0.3, "sine", 300); this.burst(4000, 0.5, 0.4, 0.5, "highpass"); }
+  squeak() { this.tone(900, 0.12, 0.15, "sine", 1700); setTimeout(() => this.ctx && this.tone(1300, 0.1, 0.12, "sine", 1900), 110); }
+  zap() { this.tone(1800, 0.35, 0.3, "sawtooth", 120); this.burst(5000, 0.4, 0.35, 0.5, "highpass"); }
+  crackle(vol: number) { if (vol > 0.02) for (let i = 0; i < 3; i++) setTimeout(() => this.ctx && this.burst(3000 + Math.random() * 3000, 2, 0.04, 0.25 * vol, "bandpass"), i * 50 + Math.random() * 40); }
+  questDone() { [523, 659, 784, 1046].forEach((f, i) => setTimeout(() => this.ctx && this.tone(f, 0.35, 0.18, "triangle"), i * 110)); }
+  step(run: boolean) { this.burst(run ? 260 : 180, 1.2, run ? 0.12 : 0.18, run ? 0.5 : 0.25, "lowpass"); }
+  pickup() { this.tone(660, 0.25, 0.15, "triangle"); this.tone(990, 0.3, 0.1, "triangle"); }
+  click() { this.burst(2500, 3, 0.04, 0.3); }
+  door() { this.tone(70, 0.7, 0.4, "sawtooth", 40); this.burst(300, 1, 0.6, 0.3); }
+  power() { this.tone(50, 1.5, 0.5, "square", 120); this.burst(120, 0.5, 1.5, 0.4, "lowpass"); }
+  error() { this.tone(120, 0.3, 0.25, "square"); }
+  growl() { this.tone(90, 1.1, 0.4, "sawtooth", 45); this.burst(200, 2, 1, 0.25); }
+  sting() { this.tone(880, 1.4, 0.4, "sawtooth", 700); this.tone(932, 1.4, 0.4, "sawtooth", 740); this.burst(3000, 0.5, 1.2, 0.5, "highpass"); }
+
+  // intensity 0..1 is how close the monster is
+  heartbeat(dt: number, intensity: number) {
+    this.droneGain.gain.value = 0.12 + intensity * 0.15;
+    if (intensity < 0.05) return;
+    this.beatT -= dt;
+    if (this.beatT <= 0) {
+      this.beatT = 1.1 - intensity * 0.6;
+      this.tone(55, 0.15, 0.7 * intensity + 0.1, "sine", 35);
+      setTimeout(() => this.ctx && this.tone(50, 0.15, 0.5 * intensity, "sine", 32), 160);
+    }
+  }
+}
