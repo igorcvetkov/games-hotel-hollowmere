@@ -4,6 +4,7 @@ import { createWorld } from "./world";
 import { buildPickupModel, cylMesh, M } from "./pickup-models";
 import { createMinimap } from "./minimap";
 import { createCharacters } from "./characters";
+import { createAtmosphere } from "./atmosphere";
 import { CELL, MONSTER_START, START, cellToWorld } from "./map";
 
 const $ = (id: string) => document.getElementById(id)!;
@@ -194,6 +195,8 @@ let hidden = false;
 let grace = 0;
 let hideReturn = new THREE.Vector3();
 const keys: Record<string, boolean> = {};
+const touchInput = { x: 0, y: 0, run: false };
+const isTouchDevice = window.matchMedia("(pointer: coarse)").matches || navigator.maxTouchPoints > 0;
 
 function collide(x: number, z: number, r = 0.4) {
   const minX = Math.floor((x - r) / CELL), maxX = Math.floor((x + r) / CELL);
@@ -242,6 +245,7 @@ const characters = createCharacters({
   get freezeHint() { return freezeHint; }, set freezeHint(value: boolean) { freezeHint = value; },
 });
 const { monster, sparky, humman, bats, eyeState, eyeUpdate, askEye, eyeSay } = characters;
+const atmosphere = createAtmosphere(scene, player, isSolid, lineOfSight, sound);
 
 // ---------- UI helpers ----------
 let padOpen = false;
@@ -249,6 +253,7 @@ let padCb: (() => void) | null = null;
 let padCode = "";
 function openPad(title: string, code: string, ok: () => void) {
   padOpen = true; padCb = ok; padCode = code;
+  if (isTouchDevice) $("touch-controls").hidden = true;
   $("padTitle").textContent = title;
   ($("padIn") as HTMLInputElement).value = "";
   $("pad").style.display = "block";
@@ -258,7 +263,8 @@ function openPad(title: string, code: string, ok: () => void) {
 function closePad() {
   padOpen = false;
   $("pad").style.display = "none";
-  renderer.domElement.requestPointerLock();
+  if (isTouchDevice) $("touch-controls").hidden = false;
+  else renderer.domElement.requestPointerLock();
 }
 $("padOk").onclick = () => {
   if (($("padIn") as HTMLInputElement).value === padCode) { const cb = padCb; closePad(); cb?.(); }
@@ -341,12 +347,23 @@ function lightFlash() {
     say("ZAP! Humman is dizzy! Run!", 3000);
   }
 }
-addEventListener("mousedown", () => lightFlash());
+addEventListener("pointerdown", (e) => {
+  if (e.pointerType === "mouse" && !(e.target as HTMLElement).closest("#touch-controls")) lightFlash();
+});
 
 // ---------- input ----------
-$("overlay").onclick = () => {
+function beginGame(pointerType?: string) {
   if (!started) { started = true; sound.start(); }
-  renderer.domElement.requestPointerLock();
+  if (pointerType === "touch" || (!pointerType && isTouchDevice)) {
+    running = true;
+    $("overlay").style.display = "none";
+  } else {
+    renderer.domElement.requestPointerLock();
+  }
+}
+
+$("overlay").onclick = (e) => {
+  beginGame(e instanceof PointerEvent ? e.pointerType : undefined);
 };
 document.addEventListener("pointerlockchange", () => {
   const locked = document.pointerLockElement === renderer.domElement;
@@ -359,22 +376,123 @@ addEventListener("mousemove", (e) => {
   player.yaw -= e.movementX * 0.0022;
   player.pitch = Math.max(-1.4, Math.min(1.4, player.pitch - e.movementY * 0.0022));
 });
+
+let lookPointer: number | null = null;
+let lastLookX = 0;
+let lastLookY = 0;
+document.addEventListener("pointerdown", (e) => {
+  if (!isTouchDevice || !running || padOpen || e.pointerType !== "touch") return;
+  if ((e.target as HTMLElement).closest("#touch-controls")) return;
+  lookPointer = e.pointerId;
+  lastLookX = e.clientX;
+  lastLookY = e.clientY;
+});
+document.addEventListener("pointermove", (e) => {
+  if (e.pointerId !== lookPointer || !running || padOpen) return;
+  const dx = e.clientX - lastLookX;
+  const dy = e.clientY - lastLookY;
+  lastLookX = e.clientX;
+  lastLookY = e.clientY;
+  player.yaw -= dx * 0.004;
+  player.pitch = Math.max(-1.4, Math.min(1.4, player.pitch - dy * 0.004));
+});
+const endLook = (e: PointerEvent) => {
+  if (e.pointerId === lookPointer) lookPointer = null;
+};
+document.addEventListener("pointerup", endLook);
+document.addEventListener("pointercancel", endLook);
+
+function useInteract() {
+  if (!running || padOpen) return;
+  if (hidden) { leaveHide(); return; }
+  if (target) target.use();
+}
+function toggleFlashlight() {
+  if (!running || padOpen || !flags.hasLight || hidden) return;
+  if (characters.zapT > 0) { sound.error(); say("Flashlight is short-circuited for a moment!", 1500); }
+  else {
+    flags.flashOn = !flags.flashOn;
+    sound.click();
+    if (flags.flashOn && sparky.dist() < 16) sparky.lure(player.pos);
+  }
+}
+function toggleMap() {
+  if (running) minimap.toggle();
+}
+
+if (isTouchDevice) {
+  const controls = $("touch-controls");
+  controls.hidden = false;
+  const stick = $("move-stick");
+  const knob = $("move-knob");
+  let stickPointer: number | null = null;
+  function updateStick(e: PointerEvent) {
+    const rect = stick.getBoundingClientRect();
+    const radius = rect.width * 0.34;
+    const dx = e.clientX - (rect.left + rect.width / 2);
+    const dy = e.clientY - (rect.top + rect.height / 2);
+    const length = Math.hypot(dx, dy);
+    const scale = length > radius ? radius / length : 1;
+    touchInput.x = Math.max(-1, Math.min(1, dx * scale / radius));
+    touchInput.y = Math.max(-1, Math.min(1, dy * scale / radius));
+    knob.style.transform = `translate(${dx * scale}px, ${dy * scale}px)`;
+  }
+  stick.addEventListener("pointerdown", (e) => {
+    e.preventDefault();
+    stickPointer = e.pointerId;
+    stick.setPointerCapture(e.pointerId);
+    updateStick(e);
+  });
+  stick.addEventListener("pointermove", (e) => {
+    if (e.pointerId === stickPointer) updateStick(e);
+  });
+  const releaseStick = (e: PointerEvent) => {
+    if (e.pointerId !== stickPointer) return;
+    stickPointer = null;
+    touchInput.x = 0;
+    touchInput.y = 0;
+    knob.style.transform = "translate(0, 0)";
+  };
+  stick.addEventListener("pointerup", releaseStick);
+  stick.addEventListener("pointercancel", releaseStick);
+
+  $("touch-run").addEventListener("pointerdown", (e) => {
+    e.preventDefault();
+    touchInput.run = !touchInput.run;
+    $("touch-run").classList.toggle("active", touchInput.run);
+  });
+  $("touch-interact").addEventListener("pointerdown", (e) => { e.preventDefault(); useInteract(); });
+  $("touch-flashlight").addEventListener("pointerdown", (e) => { e.preventDefault(); toggleFlashlight(); });
+  $("touch-zap").addEventListener("pointerdown", (e) => { e.preventDefault(); lightFlash(); });
+  $("touch-map").addEventListener("pointerdown", (e) => { e.preventDefault(); toggleMap(); });
+  $("touch-help").addEventListener("pointerdown", (e) => { e.preventDefault(); if (running) askEye(); });
+  $("touch-pause").addEventListener("pointerdown", (e) => {
+    e.preventDefault();
+    if (!running) return;
+    running = false;
+    touchInput.x = 0;
+    touchInput.y = 0;
+    touchInput.run = false;
+    $("touch-run").classList.remove("active");
+    knob.style.transform = "translate(0, 0)";
+    $("ovText").innerHTML = "Paused. <i>Tap to continue</i>";
+    $("overlay").style.display = "flex";
+  });
+}
+
 addEventListener("keydown", (e) => {
   keys[e.code] = true;
-  if (e.code === "KeyM" && running) minimap.toggle();
+  if (e.code === "KeyM" && running) toggleMap();
   if (!running || padOpen) return;
-  if (e.code === "KeyF" && flags.hasLight && !hidden) {
-    if (characters.zapT > 0) { sound.error(); say("Flashlight is short-circuited for a moment!", 1500); }
-    else { flags.flashOn = !flags.flashOn; sound.click(); if (flags.flashOn && sparky.dist() < 16) sparky.lure(player.pos); }
-  }
+  if (e.code === "KeyF") toggleFlashlight();
   if (e.code === "KeyQ") lightFlash();
   if (e.code === "KeyH") askEye();
-  if (e.code === "KeyE") {
-    if (hidden) { leaveHide(); return; }
-    if (target) target.use();
-  }
+  if (e.code === "KeyE") useInteract();
 });
-addEventListener("keyup", (e) => (keys[e.code] = false));
+addEventListener("keyup", (e) => {
+  keys[e.code] = false;
+  if (e.code === "ShiftLeft" || e.code === "ShiftRight") touchInput.run = false;
+});
 
 function objectiveSpot(): { x: number; y: number } {
   if (!flags.hasLight) return { x: 2, y: 5 };
@@ -415,23 +533,23 @@ function update(dt: number) {
   let moving = false;
   const run = !!(keys.ShiftLeft || keys.ShiftRight);
   if (!hidden && !padOpen) {
-    const f = (keys.KeyW ? 1 : 0) - (keys.KeyS ? 1 : 0);
-    const s = (keys.KeyD ? 1 : 0) - (keys.KeyA ? 1 : 0);
+    const f = (keys.KeyW ? 1 : 0) - (keys.KeyS ? 1 : 0) - touchInput.y;
+    const s = (keys.KeyD ? 1 : 0) - (keys.KeyA ? 1 : 0) + touchInput.x;
     if (f || s) {
       moving = true;
       const len = Math.hypot(f, s);
-      const speed = run ? 5.2 : 2.9;
+      const speed = run || touchInput.run ? 5.2 : 2.9;
       const sin = Math.sin(player.yaw), cos = Math.cos(player.yaw);
       const vx = (-sin * f + cos * s) / len * speed * dt;
       const vz = (-cos * f - sin * s) / len * speed * dt;
       if (!collide(player.pos.x + vx, player.pos.z)) player.pos.x += vx;
       if (!collide(player.pos.x, player.pos.z + vz)) player.pos.z += vz;
       player.stepDist += speed * dt;
-      if (player.stepDist > (run ? 1.7 : 1.5)) { player.stepDist = 0; sound.step(run); }
+      if (player.stepDist > (run || touchInput.run ? 1.7 : 1.5)) { player.stepDist = 0; sound.step(run || touchInput.run); }
     }
   }
-  player.noise = moving ? (run ? 9 : 3) : 0;
-  player.pos.y = hidden ? 1.4 : 1.6 + (moving ? Math.sin(performance.now() / (run ? 110 : 170)) * 0.04 : 0);
+  player.noise = moving ? (run || touchInput.run ? 9 : 3) : 0;
+  player.pos.y = hidden ? 1.4 : 1.6 + (moving ? Math.sin(performance.now() / (run || touchInput.run ? 110 : 170)) * 0.04 : 0);
 
   // flashlight + battery
   const on = flags.hasLight && flags.flashOn && battery > 0 && !hidden;
@@ -446,6 +564,7 @@ function update(dt: number) {
   humman.update(dt);
   const batTime = performance.now() / 1000;
   bats.update(dt, batTime);
+  atmosphere.update(dt);
   characters.zapT = Math.max(0, characters.zapT - dt);
   playT += dt;
   if (playT > 25 && !sparkyWarned) { sparkyWarned = true; eyeSay("See the light switch on the wall? Flip it with E... but Sparky the electric ghost LOVES electricity and will float over. If he does: FREEZE, don't move!", 11000); }

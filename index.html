@@ -5,7 +5,8 @@
 <title>Hotel Hollowmere</title>
 <style>
   html,body{margin:0;height:100%;background:#000;overflow:hidden;font-family:Georgia,serif;color:#ddd}
-  canvas{display:block}
+  body{user-select:none;-webkit-user-select:none}
+  canvas{display:block;touch-action:none}
   #hud{position:fixed;inset:0;pointer-events:none}
   #cross{position:absolute;left:50%;top:50%;width:4px;height:4px;margin:-2px;background:#fff8;border-radius:50%}
   #prompt{position:absolute;left:50%;top:58%;transform:translateX(-50%);font-size:20px;text-shadow:0 0 6px #000}
@@ -16,7 +17,7 @@
   #overlay{position:fixed;inset:0;background:#000d;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;cursor:pointer}
   #overlay h1{font-size:54px;letter-spacing:6px;color:#c33;margin:0 0 10px}
   #overlay p{max-width:560px;line-height:1.5}
-  #pad{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);background:#111;border:2px solid #744;padding:24px;display:none;text-align:center}
+  #pad{position:fixed;z-index:6;left:50%;top:50%;transform:translate(-50%,-50%);background:#111;border:2px solid #744;padding:24px;display:none;text-align:center}
   #pad input{font-size:32px;width:140px;text-align:center;background:#000;color:#e55;border:1px solid #744;letter-spacing:8px}
   #pad button{font-size:18px;margin:8px 4px 0;padding:6px 14px}
   #eyeSay{position:absolute;left:50%;top:14%;transform:translateX(-50%);font-size:22px;color:#9fffb8;background:#000a;border:2px solid #3c6;border-radius:14px;padding:8px 16px;max-width:60%;text-align:center;opacity:0;transition:opacity .4s}
@@ -26,12 +27,72 @@
   #zap{position:absolute;inset:0;background:#5cf;opacity:0}
   #flash{position:absolute;inset:0;background:#fff;opacity:0}
   #blood{transition:opacity 1s}
+  #touch-controls[hidden]{display:none}
+  #touch-controls{position:fixed;inset:0;z-index:4;pointer-events:none;touch-action:none;font-family:system-ui,sans-serif}
+  #move-stick{position:absolute;left:max(20px,env(safe-area-inset-left));bottom:max(22px,env(safe-area-inset-bottom));width:138px;height:138px;border-radius:50%;background:#10151bb8;border:2px solid #c9b99588;pointer-events:auto;touch-action:none}
+  #move-knob{position:absolute;left:50%;top:50%;width:58px;height:58px;margin:-29px;border-radius:50%;background:#b8c9d5aa;border:2px solid #fff9;box-shadow:0 0 14px #fff4;pointer-events:none}
+  #action-buttons{position:absolute;right:max(18px,env(safe-area-inset-right));bottom:max(20px,env(safe-area-inset-bottom));display:grid;grid-template-columns:repeat(2,minmax(68px,84px));gap:10px;pointer-events:auto}
+  .touch-button{display:grid;place-items:center;min-height:58px;padding:6px;border:2px solid #c9b995aa;border-radius:18px;background:#151319d9;color:#fff;box-shadow:0 3px 10px #0008;touch-action:none}
+  .touch-button svg{width:28px;height:28px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;pointer-events:none}
+  .touch-button:active,.touch-button.active{background:#713c31ed;border-color:#ffe0a2;transform:scale(.96)}
+  #touch-pause{position:absolute;right:max(18px,env(safe-area-inset-right));top:max(18px,env(safe-area-inset-top));min-height:44px;min-width:58px;pointer-events:auto}
+  #touch-pause svg{width:22px;height:22px}
+  #touch-help{grid-column:1}
+  @media(max-width:600px){
+    #info{left:8px;top:8px;font-size:12px;line-height:1.35;max-width:52vw}
+    #mini{right:8px;bottom:8px;max-width:38vw}
+    #msg{font-size:17px;max-width:82%;bottom:24%}
+    #eyeSay{font-size:16px;max-width:75%;top:18%}
+    #freeze{font-size:30px;top:34%}
+    #prompt{font-size:16px;top:55%}
+    #overlay h1{font-size:clamp(28px,8vw,48px)}
+    #overlay p{font-size:14px;max-width:88vw}
+    #move-stick{width:118px;height:118px}
+    #move-knob{width:50px;height:50px;margin:-25px}
+    #action-buttons{grid-template-columns:repeat(2,70px);gap:7px}
+    .touch-button{min-height:52px;border-radius:15px}
+    .touch-button svg{width:25px;height:25px}
+  }
+  @media(orientation:landscape) and (max-height:500px){
+    #move-stick{width:104px;height:104px;bottom:12px}
+    #move-knob{width:46px;height:46px;margin:-23px}
+    #action-buttons{grid-template-columns:repeat(3,68px);gap:6px;bottom:10px}
+    .touch-button{min-height:44px}
+    .touch-button svg{width:22px;height:22px}
+    #touch-pause{top:8px}
+  }
 </style>
 </head>
 <body>
 <div id="hud"><div id="vig"></div><div id="blood"></div><div id="flash"></div><div id="zap"></div><div id="cross"></div><div id="prompt"></div><div id="msg"></div><div id="eyeSay"></div><div id="freeze">❄ FREEZE! Don't move! ❄</div><div id="info"></div><canvas id="mini"></canvas></div>
+<div id="touch-controls" hidden aria-label="Touch game controls">
+  <button id="touch-pause" class="touch-button" type="button" aria-label="Pause" title="Pause">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5v14M15 5v14"/></svg>
+  </button>
+  <div id="move-stick" aria-label="Move joystick"><div id="move-knob"></div></div>
+  <div id="action-buttons">
+    <button id="touch-interact" class="touch-button" type="button" aria-label="Interact" title="Interact">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 11V6a2 2 0 0 1 4 0v5-2a2 2 0 0 1 4 0v3-1a2 2 0 0 1 4 0v4a7 7 0 0 1-7 7h-1a7 7 0 0 1-5.4-2.5L3 15a2 2 0 0 1 3-2.6L8 15"/></svg>
+    </button>
+    <button id="touch-flashlight" class="touch-button" type="button" aria-label="Toggle flashlight" title="Toggle flashlight">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6l1 5-2 2v8l-2 3-2-3v-8L8 8l1-5Z"/><path d="M9 8h6M12 10v7"/></svg>
+    </button>
+    <button id="touch-zap" class="touch-button" type="button" aria-label="Light flash" title="Light flash">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m13 2-9 12h7l-1 8 10-13h-7l1-7Z"/></svg>
+    </button>
+    <button id="touch-run" class="touch-button" type="button" aria-label="Toggle running" title="Toggle running">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="15" cy="4" r="2"/><path d="m12 8-3 4 4 2 2 6M9 12l-4 2M13 9l4 3 3 1M10 20l3-5"/></svg>
+    </button>
+    <button id="touch-map" class="touch-button" type="button" aria-label="Toggle map" title="Toggle map">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 6 6-3 6 3 6-3v15l-6 3-6-3-6 3V6Z"/><path d="M9 3v15m6-12v15"/></svg>
+    </button>
+    <button id="touch-help" class="touch-button" type="button" aria-label="Ask the Rolling Eye for help" title="Ask the Rolling Eye for help">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/><path d="M12 10.5v3"/></svg>
+    </button>
+  </div>
+</div>
 <div id="pad"><div id="padTitle">Enter code</div><input id="padIn" maxlength="4" autocomplete="off" /><br><button id="padOk">OK</button><button id="padCancel">Cancel</button></div>
-<div id="overlay"><h1 id="ovTitle">HOTEL HOLLOWMERE</h1><p id="ovText">Halloween night. You were taken by something that is not human, and you wake up in a cell in the cellar of an old hotel. Find a way out before midnight.<br><br><b>WASD</b> move · <b>Shift</b> run (loud!) · <b>Mouse</b> look · <b>E</b> interact · <b>F</b> flashlight · <b>M</b> big map · <b>H</b> ask the Rolling Eye · <b>Q</b> or click: light flash (stuns the Concierge!)<br>Listen for the Concierge's bell! Sparky the electric ghost is drawn to light switches and glowing flashlights - if he comes close, freeze!Hide in wardrobes when the Concierge hunts you.<br><br><i>Click to begin</i></p></div>
+<div id="overlay"><h1 id="ovTitle">HOTEL HOLLOWMERE</h1><p id="ovText">Halloween night. You were taken by something that is not human, and you wake up in a cell in the cellar of an old hotel.<br><br><b>Computer:</b> WASD move · Shift run · Mouse look · E interact · F light · Q/click flash · M map · H help.<br><b>Phone/tablet:</b> use the joystick to move, drag the open screen to look, and tap the on-screen buttons.<br><br>Listen for the Concierge's bell! Sparky loves electricity. If he comes close, freeze! Hide in wardrobes when the Concierge hunts you.<br><br><i>Click or tap to begin</i></p></div>
 <script type="module" src="/src/main.ts"></script>
 </body>
 </html>

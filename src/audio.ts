@@ -119,6 +119,22 @@ export class Sound {
     for (const n of [o, o2, lfo]) { n.start(t); n.stop(t + 0.6); }
   }
   hummanRise() { this.tone(60, 2, 0.5, "sawtooth", 140); this.burst(150, 0.6, 2, 0.4, "lowpass"); }
+  musicBox() {
+    const notes = [784, 659, 523, 659, 880, 784, 659, 587];
+    notes.forEach((freq, index) => {
+      setTimeout(() => {
+        if (this.ctx) this.tone(freq, 0.62, 0.045, "sine");
+      }, index * 260);
+    });
+  }
+  houseCreak() {
+    this.tone(145, 1.8, 0.11, "sawtooth", 72);
+    this.burst(420, 0.8, 1.5, 0.06, "lowpass");
+  }
+  ghostWhisper() {
+    this.tone(470, 0.9, 0.045, "sine", 310);
+    this.burst(1250, 1.5, 0.75, 0.045, "bandpass");
+  }
   thump(vol: number) { if (vol > 0.02) { this.tone(80, 0.3, 0.7 * vol, "sine", 35); this.burst(200, 1, 0.2, 0.4 * vol, "lowpass"); } }
   boing(vol: number) { if (vol > 0.02) this.tone(200, 0.4, 0.3 * vol, "sine", 700); }
   step(run: boolean) { this.burst(run ? 260 : 180, 1.2, run ? 0.12 : 0.18, run ? 0.5 : 0.25, "lowpass"); }

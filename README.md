@@ -12,9 +12,11 @@ npm run dev      # dev server (Vite prints the URL, usually http://localhost:517
 npm run build    # type-check + production build into dist/
 ```
 
-Click the screen to start (this also enables sound and mouse look).
+Click or tap the screen to start (this also enables sound).
 
 ## Controls
+
+### Computer
 
 | Key | Action |
 |---|---|
@@ -26,6 +28,13 @@ Click the screen to start (this also enables sound and mouse look).
 | Q or click | Light flash: stuns the Concierge |
 | H | Ask the Rolling Eye for directions |
 | M | Toggle big map |
+
+### Phone and tablet
+
+- Use the left virtual joystick to move.
+- Drag on the open part of the screen to look around.
+- Tap **Interact**, **Light**, **Flash**, **Run**, **Map**, and **Help** for the matching actions.
+- Tap **Pause** in the top-right corner to pause; tap the screen to resume.
 
 ## Gameplay
 
@@ -59,15 +68,18 @@ There are currently no other neutral characters.
 
 If any monster catches you, you are sent back to the cell with a few seconds of safety. There is no game over.
 
+**Atmosphere:** drifting dust motes, procedural cobwebs in room corners, an occasional friendly ghost apparition, faint music-box notes, and random old-house creaks. These are visual/audio ambience only; apparitions are harmless.
+
 **Systems:** flashlight battery (pickups restore it), per-room light switches, a fog-of-war minimap (bottom-right) that reveals as you explore, a quest counter, a level-complete screen with your time, and funny framed wall paintings.
 
 ## Project structure
 
 | File | Purpose |
 |---|---|
-| [index.html](index.html) | Page, HUD, overlay and code-pad styles |
+| [index.html](index.html) | Page, HUD, touch controls, overlay and code-pad styles |
 | [src/main.ts](src/main.ts) | Game setup, shared state, interactables, player input, quests, and main loop |
 | [src/world.ts](src/world.ts) | Three.js scene, generated textures, level geometry, lights, and wall paintings |
+| [src/atmosphere.ts](src/atmosphere.ts) | Dust, cobwebs, harmless ghost apparitions, and ambient event timing |
 | [src/characters/index.ts](src/characters/index.ts) | Creates characters and connects their shared context |
 | [src/characters/types.ts](src/characters/types.ts) | Shared character context and game-state types |
 | [src/characters/concierge.ts](src/characters/concierge.ts) | Concierge patrol, hearing, chasing, and animation |
@@ -97,6 +109,5 @@ If any monster catches you, you are sent back to the cell with a few seconds of 
 
 ## Roadmap
 
-- More atmosphere (music box, dust, cobwebs, peeking ghosts, random events).
 - Quest checklist with a progress bar.
 - More floors and quests, a save system, and more varied wall art and furniture.
