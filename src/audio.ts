@@ -98,6 +98,29 @@ export class Sound {
   zap() { this.tone(1800, 0.35, 0.3, "sawtooth", 120); this.burst(5000, 0.4, 0.35, 0.5, "highpass"); }
   crackle(vol: number) { if (vol > 0.02) for (let i = 0; i < 3; i++) setTimeout(() => this.ctx && this.burst(3000 + Math.random() * 3000, 2, 0.04, 0.25 * vol, "bandpass"), i * 50 + Math.random() * 40); }
   questDone() { [523, 659, 784, 1046].forEach((f, i) => setTimeout(() => this.ctx && this.tone(f, 0.35, 0.18, "triangle"), i * 110)); }
+  // off-key hummed tune that wobbles; vol 0..1 by distance
+  hum(vol: number, n: number) {
+    if (vol <= 0.02) return;
+    const tune = [220, 247, 196, 233, 208, 262, 185, 220];
+    const f = tune[n % tune.length] * 0.5;
+    const t = this.ctx.currentTime;
+    const o = this.ctx.createOscillator(), o2 = this.ctx.createOscillator();
+    o.type = "triangle"; o2.type = "sine";
+    o.frequency.value = f; o2.frequency.value = f * 1.02;
+    const lfo = this.ctx.createOscillator(), lg = this.ctx.createGain();
+    lfo.frequency.value = 6; lg.gain.value = f * 0.03;
+    lfo.connect(lg); lg.connect(o.frequency); lg.connect(o2.frequency);
+    const lp = this.ctx.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 600;
+    const g = this.ctx.createGain();
+    g.gain.setValueAtTime(0.001, t);
+    g.gain.exponentialRampToValueAtTime(0.35 * vol, t + 0.08);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.55);
+    o.connect(lp); o2.connect(lp); lp.connect(g).connect(this.master);
+    for (const n of [o, o2, lfo]) { n.start(t); n.stop(t + 0.6); }
+  }
+  hummanRise() { this.tone(60, 2, 0.5, "sawtooth", 140); this.burst(150, 0.6, 2, 0.4, "lowpass"); }
+  thump(vol: number) { if (vol > 0.02) { this.tone(80, 0.3, 0.7 * vol, "sine", 35); this.burst(200, 1, 0.2, 0.4 * vol, "lowpass"); } }
+  boing(vol: number) { if (vol > 0.02) this.tone(200, 0.4, 0.3 * vol, "sine", 700); }
   step(run: boolean) { this.burst(run ? 260 : 180, 1.2, run ? 0.12 : 0.18, run ? 0.5 : 0.25, "lowpass"); }
   pickup() { this.tone(660, 0.25, 0.15, "triangle"); this.tone(990, 0.3, 0.1, "triangle"); }
   click() { this.burst(2500, 3, 0.04, 0.3); }
