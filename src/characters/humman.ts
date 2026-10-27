@@ -63,7 +63,7 @@ export function createHumman(ctx: CharacterContext, monster: Concierge, eye: Rol
       skull.scale.set(1.1, 1, 1);
       this.head.add(skull);
       for (const sx of [-1, 1]) {
-        const eye = new THREE.Mesh(new THREE.SphereGeometry(0.13, 14, 12), white);
+        const eye = new THREE.Mesh(new THREE.SphereGeometry(0.13, 14, 12), new THREE.MeshBasicMaterial({ color: 0xff1a1a }));
         eye.position.set(sx * 0.16, 0.07, 0.27);
         const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.05, 10, 8), new THREE.MeshBasicMaterial({ color: 0x000000 }));
         pupil.position.set(sx * 0.16, 0.07, 0.38);
@@ -200,8 +200,11 @@ export function createHumman(ctx: CharacterContext, monster: Concierge, eye: Rol
         this.head.rotation.y = Math.sin(t * 25) * 0.6;
         this.mesh.rotation.y += dt * 7;
       }
-      // googly eyes jiggle
-      this.pupils.forEach((p, i) => { p.position.x = (i === 0 ? -0.16 : 0.16) + Math.sin(t * (9 + i * 3)) * 0.04; p.position.y = 0.07 + Math.cos(t * (7 + i * 2)) * 0.035; });
+      // red eyes scan from side to side; pupils stay on the eyeball surface
+      const scan = Math.sin(t * 2.4) * 0.08;
+      this.pupils.forEach((p, i) => {
+        p.position.set((i === 0 ? -0.16 : 0.16) + scan, 0.07, 0.27 + Math.sqrt(0.13 * 0.13 - scan * scan) - 0.01);
+      });
 
       // off-key humming gets louder as he approaches
       this.humT -= dt;

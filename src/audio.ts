@@ -7,7 +7,17 @@ export class Sound {
   private beatT = 0;
 
   start() {
-    this.ctx = new AudioContext();
+    // Safari on older iOS only has the prefixed constructor; if audio is unavailable the game still runs, silently.
+    const AC: typeof AudioContext | undefined = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!AC) return;
+    try { this.build(new AC()); } catch (err) { console.warn("Audio disabled:", err); this.ctx = undefined as unknown as AudioContext; }
+  }
+
+  // iOS keeps the context suspended until it is resumed from a user gesture
+  resume() { if (this.ctx && this.ctx.state !== "running") void this.ctx.resume(); }
+
+  private build(ctx: AudioContext) {
+    this.ctx = ctx;
     this.master = this.ctx.createGain();
     this.master.gain.value = 0.8;
     this.master.connect(this.ctx.destination);
@@ -49,6 +59,7 @@ export class Sound {
   }
 
   private burst(freq: number, q: number, dur: number, vol: number, type: BiquadFilterType = "bandpass") {
+    if (!this.ctx) return;
     const t = this.ctx.currentTime;
     const s = this.ctx.createBufferSource();
     s.buffer = this.noise;
@@ -65,6 +76,7 @@ export class Sound {
   }
 
   private tone(freq: number, dur: number, vol: number, type: OscillatorType = "sine", slideTo?: number) {
+    if (!this.ctx) return;
     const t = this.ctx.currentTime;
     const o = this.ctx.createOscillator();
     o.type = type;
@@ -79,7 +91,7 @@ export class Sound {
   }
 
   bell(vol: number) {
-    if (vol <= 0.02) return;
+    if (vol <= 0.02 || !this.ctx) return;
     const t = this.ctx.currentTime;
     for (const [f, v] of [[880, 1], [1318, 0.6], [2217, 0.35], [3520, 0.2]]) {
       const o = this.ctx.createOscillator();
@@ -100,7 +112,7 @@ export class Sound {
   questDone() { [523, 659, 784, 1046].forEach((f, i) => setTimeout(() => this.ctx && this.tone(f, 0.35, 0.18, "triangle"), i * 110)); }
   // off-key hummed tune that wobbles; vol 0..1 by distance
   hum(vol: number, n: number) {
-    if (vol <= 0.02) return;
+    if (vol <= 0.02 || !this.ctx) return;
     const tune = [220, 247, 196, 233, 208, 262, 185, 220];
     const f = tune[n % tune.length] * 0.5;
     const t = this.ctx.currentTime;
@@ -148,6 +160,7 @@ export class Sound {
 
   // intensity 0..1 is how close the monster is
   heartbeat(dt: number, intensity: number) {
+    if (!this.ctx) return;
     this.droneGain.gain.value = 0.12 + intensity * 0.15;
     if (intensity < 0.05) return;
     this.beatT -= dt;

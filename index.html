@@ -2,10 +2,11 @@
 <html>
 <head>
 <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover" />
 <title>Hotel Hollowmere</title>
 <style>
   html,body{margin:0;height:100%;background:#000;overflow:hidden;font-family:Georgia,serif;color:#ddd}
-  body{user-select:none;-webkit-user-select:none}
+  body{user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
   canvas{display:block;touch-action:none}
   #hud{position:fixed;inset:0;pointer-events:none}
   #cross{position:absolute;left:50%;top:50%;width:4px;height:4px;margin:-2px;background:#fff8;border-radius:50%}
@@ -91,7 +92,7 @@
     </button>
   </div>
 </div>
-<div id="pad"><div id="padTitle">Enter code</div><input id="padIn" maxlength="4" autocomplete="off" /><br><button id="padOk">OK</button><button id="padCancel">Cancel</button></div>
+<div id="pad"><div id="padTitle">Enter code</div><input id="padIn" maxlength="4" autocomplete="off" inputmode="numeric" pattern="[0-9]*" /><br><button id="padOk">OK</button><button id="padCancel">Cancel</button></div>
 <div id="overlay"><h1 id="ovTitle">HOTEL HOLLOWMERE</h1><p id="ovText">Halloween night. You were taken by something that is not human, and you wake up in a cell in the cellar of an old hotel.<br><br><b>Computer:</b> WASD move · Shift run · Mouse look · E interact · F light · Q/click flash · M map · H help.<br><b>Phone/tablet:</b> use the joystick to move, drag the open screen to look, and tap the on-screen buttons.<br><br>Listen for the Concierge's bell! Sparky loves electricity. If he comes close, freeze! Hide in wardrobes when the Concierge hunts you.<br><br><i>Click or tap to begin</i></p></div>
 <script type="module" src="/src/main.ts"></script>
 </body>

@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { Sound } from "./audio";
 import { createWorld } from "./world";
+import { createDecor } from "./decor";
 import { buildPickupModel, cylMesh, M } from "./pickup-models";
 import { createMinimap } from "./minimap";
 import { createCharacters } from "./characters";
@@ -11,6 +12,7 @@ const $ = (id: string) => document.getElementById(id)!;
 const sound = new Sound();
 
 const { renderer, scene, camera, ambient, flashlight, solid, isSolid, lamps, lampOn, bulbMats, woodMat, metalMat } = createWorld();
+const decor = createDecor(scene, solid);
 
 // ---------- game state ----------
 const inv = new Set<string>();
@@ -143,7 +145,8 @@ furniture(11, 1, (() => { const g = new THREE.Group(); g.add(box(1.2, 1.4, 1, me
 });
 
 // boiler door (D at 15,4)
-const boilerDoor = placeAt(box(0.3, 2.8, CELL, new THREE.MeshStandardMaterial({ color: 0x3a1f1f }), 0, 1.4, 0), 15, 4);
+const boilerDoor = placeAt(box(0.3, 2.8, CELL, new THREE.MeshStandardMaterial({ color: 0x3a1f1f }), 0, 0, 0), 15, 4, 1.4);
+decor.dressBoilerDoor(boilerDoor);
 addEnt({
   obj: boilerDoor, label: () => (flags.boilerOpen ? null : "[E] Boiler room door"),
   use: () => {
@@ -180,7 +183,7 @@ furniture(14, 12, (() => { const g = new THREE.Group(); g.add(box(1.6, 1.4, 1.2,
 });
 
 // quest 7: front door
-const exitDoor = placeAt(box(CELL, 2.8, 0.3, new THREE.MeshStandardMaterial({ color: 0x5a3a1a }), 0, 1.4, 0), 5, 13);
+const exitDoor = placeAt(box(CELL, 2.8, 0.3, new THREE.MeshStandardMaterial({ color: 0x5a3a1a }), 0, 0, 0), 5, 13, 1.4);
 addEnt({
   obj: exitDoor, label: () => "[E] Front door",
   use: () => {
@@ -202,7 +205,7 @@ function collide(x: number, z: number, r = 0.4) {
   const minX = Math.floor((x - r) / CELL), maxX = Math.floor((x + r) / CELL);
   const minY = Math.floor((z - r) / CELL), maxY = Math.floor((z + r) / CELL);
   for (let cy = minY; cy <= maxY; cy++) for (let cx = minX; cx <= maxX; cx++) if (isSolid(cx, cy)) return true;
-  return false;
+  return decor.blocked(x, z, r);
 }
 
 function lineOfSight(ax: number, az: number, bx: number, bz: number, skipEnd = false) {
@@ -354,6 +357,7 @@ addEventListener("pointerdown", (e) => {
 // ---------- input ----------
 function beginGame(pointerType?: string) {
   if (!started) { started = true; sound.start(); }
+  sound.resume();
   if (pointerType === "touch" || (!pointerType && isTouchDevice)) {
     running = true;
     $("overlay").style.display = "none";
